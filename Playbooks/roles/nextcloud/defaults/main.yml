@@ -1,0 +1,19 @@
+---
+php_version: 8.2
+
+php_packages:
+  - "php{{ php_version }}-fpm"
+  - "php{{ php_version }}-common"
+  - "php{{ php_version }}-pgsql"
+  - "php{{ php_version }}-zip"
+  - "php{{ php_version }}-xml"
+  - "php{{ php_version }}-intl"
+  - "php{{ php_version }}-gd"
+  - "php{{ php_version }}-mbstring"
+  - "php{{ php_version }}-curl"
+  - "php{{ php_version }}-imagick"
+  - 'unzip'
+
+php_fpm_conf_file: "/etc/php/{{ php_version }}/fpm/pool.d/www.conf"
+php_ini_conf_file: "/etc/php/{{ php_version }}/fpm/php.ini"
+nextcloud_nginx_conf_file: '/etc/nginx/sites-enabled/nextcloud.conf'

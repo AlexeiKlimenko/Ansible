@@ -1,0 +1,2 @@
+[nextcloud-hosts]
+node08 ansible_host=10.10.7.44 ansible_user=root

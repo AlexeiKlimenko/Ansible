@@ -1,0 +1,108 @@
+---
+- name: Install php
+  ansible.builtin.apt:
+    name: "{{ php_packages }}"
+    state: present
+    update_cache: yes
+
+- name: Copy php-fpm www.conf
+  ansible.builtin.template:
+    mode: 0644
+    owner: 'root'
+    group: 'root'
+    src: www.conf.j2
+    dest: "{{ php_fpm_conf_file }}"
+  notify: 'Restart php-fpm'
+
+- name: Copy php.ini www.conf
+  ansible.builtin.template:
+    mode: 0644
+    owner: 'root'
+    group: 'root'
+    src: php.ini.j2
+    dest: "{{ php_ini_conf_file }}"
+  notify: 'Restart php-fpm'
+
+- name: Start php-fpm
+  ansible.builtin.systemd:
+    name: "php{{ php_version }}-fpm"
+    state: started
+    enabled: true
+
+- name: Install nginx
+  ansible.builtin.apt:
+    name: 'nginx'
+    state: present
+    update_cache: yes
+
+- name: Remove /etc/nginx/sites-available directory
+  ansible.builtin.file:
+    path: /etc/nginx/sites-available
+    state: absent
+
+- name: Remove /etc/nginx/sites-enabled/default file
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Copy nextcloud config to nginx
+  ansible.builtin.template:
+    src: nextcloud.conf.j2
+    dest: "{{ nextcloud_nginx_conf_file }}"
+  notify: 'Reload nginx'
+
+- name: Ensure /etc/nginx/ssl exists
+  ansible.builtin.file:
+    path: /etc/nginx/ssl
+    state: directory
+
+- name: Check if SSL certificate already exists
+  ansible.builtin.stat:
+    path: /etc/nginx/ssl/cert.pem
+  register: cert_stat
+
+- name: Generate SSL certificate if not exists
+  ansible.builtin.command:
+    cmd: >
+      openssl req -new -x509 -days 1461 -nodes
+      -out /etc/nginx/ssl/cert.pem
+      -keyout /etc/nginx/ssl/cert.key
+      -subj "/C=US/ST=NY/L=NY/O=OSIR/OU=IT Department/CN=nextcloud.osir.com/CN=nextcloud"
+  args:
+    creates: /etc/nginx/ssl/cert.pem
+  when: not cert_stat.stat.exists
+  notify: 'Reload nginx'
+
+- name: Start nginx
+  ansible.builtin.systemd:
+    name: 'nginx'
+    state: started
+    enabled: true
+
+- name: Download Nextcloud latest release
+  ansible.builtin.get_url:
+    url: "https://download.nextcloud.com/server/releases/latest.zip"
+    dest: "/tmp/latest.zip"
+
+- name: Unzip Nextcloud archive
+  ansible.builtin.unarchive:
+    src: "/tmp/latest.zip"
+    dest: "/tmp"
+    remote_src: yes
+
+- name: Check if Nextcloud is already installed
+  ansible.builtin.stat:
+    path: /var/www/nextcloud
+  register: nextcloud_dir
+
+- name: Copy Nextcloud files if not installed
+  ansible.builtin.command:
+    cmd: mv /tmp/nextcloud /var/www/
+  when: not nextcloud_dir.stat.exists  # Move only if /var/www/nextcloud doesn't exist
+
+- name: Set correct ownership for Nextcloud
+  ansible.builtin.file:
+    path: /var/www/nextcloud
+    owner: www-data
+    group: www-data
+    recurse: yes
