@@ -1,5 +1,0 @@
-php_packages:
-  - "php-fpm = {{ php_version }}"
-  - "php-common = {{ php_version }}"
-  - "php-pgsql = {{ php_version }}"
-  - "php = {{ php_version }}"
