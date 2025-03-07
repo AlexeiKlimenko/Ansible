@@ -1,11 +1,4 @@
 ---
-- name: Install nextcloud
-  hosts: nextcloud-hosts
-  become: yes
-
-  roles:
-    - { role: nextcloud }
-
 - name: Install PostgreSQL
   hosts: postgresql-hosts
   become: yes

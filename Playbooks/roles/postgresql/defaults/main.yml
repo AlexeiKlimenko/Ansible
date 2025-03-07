@@ -1,0 +1,9 @@
+---
+postgresql_version: '15+248'
+postgresql_major_version: '15'
+
+db_name: 'nextcloud'
+db_user: 'nextcloud'
+db_password: 'nextcloud_password'
+db_host: '0.0.0.0'
+allowed_cidr: '0.0.0.0/0'

@@ -1,2 +1,5 @@
 [nextcloud-hosts]
-node08 ansible_host=10.10.7.44 ansible_user=root
+nx01 ansible_host=10.10.7.10 ansible_user=root
+
+[postgresql-hosts]
+psql01 ansible_host=10.10.7.171 ansible_user=root

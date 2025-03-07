@@ -1,0 +1,79 @@
+---
+- name: Ensure psycopg2 is installed
+  ansible.builtin.apt:
+    name: 'python3-psycopg2'
+    state: present
+    update_cache: yes
+
+- name: Install PostgreSQL
+  ansible.builtin.apt:
+    name: "postgresql={{ postgresql_version }}"
+    state: present
+    update_cache: yes
+
+- name: Ensure PostgreSQL is running
+  ansible.builtin.service:
+    name: "postgresql@{{ postgresql_major_version }}-main.service"
+    state: started
+    enabled: yes
+
+- name: Check if database exists
+  become_user: postgres
+  command: psql -tAc "SELECT 1 FROM pg_database WHERE datname='{{ db_name }}'"
+  register: db_exists
+  changed_when: false
+  failed_when: db_exists.rc > 1
+
+- name: Create database if it doesn't exist
+  become_user: postgres
+  postgresql_db:
+    name: "{{ db_name }}"
+    state: present
+  when: db_exists.stdout != "1"
+
+- name: Check if user exists
+  become_user: postgres
+  command: psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='{{ db_user }}'"
+  register: user_exists
+  changed_when: false
+  failed_when: user_exists.rc > 1
+
+- name: Create user if it doesn't exist
+  become_user: postgres
+  postgresql_user:
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+    state: present
+  when: user_exists.stdout != "1"
+
+- name: Grant privileges to user
+  become_user: postgres
+  postgresql_privs:
+    db: "{{ db_name }}"
+    role: "{{ db_user }}"
+    privs: ALL
+    type: database
+
+- name: Grant usage and create privileges on schema public to nextcloud
+  become_user: postgres
+  postgresql_privs:
+    db: "{{ db_name }}"
+    role: "{{ db_user }}"
+    privs: USAGE,CREATE
+    type: schema
+    objs: public
+
+- name: Allow PostgreSQL to listen on all interfaces
+  ansible.builtin.lineinfile:
+    path: "/etc/postgresql/{{ postgresql_major_version }}/main/postgresql.conf"  # Проверьте версию, может быть 14 или 13
+    regexp: "^#?listen_addresses ="
+    line: "listen_addresses = '{{ db_host }}'"
+    state: present
+  notify: Restart PostgreSQL
+
+- name: Allow external connections in pg_hba.conf
+  ansible.builtin.lineinfile:
+    path: /etc/postgresql/15/main/pg_hba.conf
+    line: "host    {{ db_name }}    {{ db_user }}    {{ allowed_cidr }}    md5"
+    state: present
+  notify: Restart PostgreSQL
